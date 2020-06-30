@@ -1,40 +1,37 @@
 {
     "items": [
         {
-            "name": "Tempering Alloy",
             "id": 5687,
+            "name": "Tempering Alloy",
             "price_threshold": 4000,
             "type": "crafting"
         },
         {
-            "name": "Rosin",
             "id": 2677,
+            "name": "Rosin",
             "price_threshold": 2000,
             "type": "crafting"
         },
         {
-            "name": "Dreugh Wax",
             "id": 211,
+            "name": "Dreugh Wax",
             "price_threshold": 7000,
             "type": "crafting"
         },
         {
-            "name": "Chromium Plating",
             "id": 18124,
+            "name": "Chromium Plating",
             "price_threshold": 60000,
             "type": "crafting"
         },
         {
-            "name": "Zircon Plating",
             "id": 17799,
+            "name": "Zircon Plating",
             "price_threshold": 15000,
             "type": "crafting"
         }
-
-    ]
-
-
-
-
-
+    ],
+    "options": {
+        "refreshRate": 30
+    }
 }
