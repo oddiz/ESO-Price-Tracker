@@ -3,3 +3,9 @@ configtest.json
 errorlog.html
 htmldump.html
 testing.html
+TODO
+
+/dist
+/build
+/__pycache__
+ESOPriceListener.spec

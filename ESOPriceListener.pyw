@@ -5,79 +5,11 @@ import json
 import threading
 import time
 
-tamrielURL = "https://eu.tamrieltradecentre.com/pc/Trade/SearchResult?ItemID=5687&SortBy=LastSeen&Order=desc"
 
 searchRegion = "eu"
 
 
 
-
-def findBestDeal(itemId):
-    #find Tamriel Trade Center URL of the item
-    itemUrl = "https://{0}.tamrieltradecentre.com/pc/Trade/SearchResult?ItemID={1}&SortBy=LastSeen&Order=desc".format(searchRegion, itemId)
-    logContents = ""
-    #try to request the page
-    try:
-        htmlContent = requests.get(itemUrl)
-        print(htmlContent.status_code)
-        if htmlContent.status_code == 202:
-            raise Exception("Connection to site succesfull but it seems like site is requesting captcha information. Visit {} and enter captcha.".format(itemUrl))
-            return
-    except Exception as e:
-        print("Page loading failed. Exception: " + e)
-        input()
-
-    #parse the response into beautiful soup
-    soup = BeautifulSoup(htmlContent.text, "html.parser")
-    try:
-        table = soup.find("table", { "class": "trade-list-table" })
-        items = table.find_all("tr", { "class": "cursor-pointer" })
-    except:
-        with open("errorlog.html" , "w", encoding = "utf-8") as f:
-            f.write("Tried Url: "+ itemUrl + "\n" + "ItemID: " + itemId + "\n" + htmlContent.text)
-
-        raise Exception("Couldn't scrape the search result. Item ID might be wrong or page is down. Check errorlog.html to see the html tried.")
-        return
-
-    #get listings into data list
-    data = []
-    
-    for item in items:
-        try:
-            itemName = item.find_all("div")[0].text.strip()
-            itemPrice = item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[0]
-            itemPrice = float(itemPrice.replace(",", ""))
-            itemAmount = int(item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[6].strip())
-            postTime = item.find("td", { "class": "bold hidden-xs" }).get("data-mins-elapsed") + " min ago"
-            itemLocation = item.find_all("td", { "class": "hidden-xs" })[1].text.strip().splitlines()[0].replace(":", " ->")
-            itemSeller = item.find("div", { "class": "text-small-width" }).text.strip()
-
-
-            data.append({ 
-                "name": itemName, 
-                "price": itemPrice , 
-                "amount": itemAmount, 
-                "totalPrice": itemPrice*itemAmount, 
-                "timeElapsed": postTime, 
-                "location": itemLocation,
-                "seller": itemSeller
-            })
-        except Exception as e:
-            with open("errorlog.html", "r") as f:
-                logContents = f.read()
-            with open("errorlog.html" , "w") as f:
-                f.write(logContents + "\n" + str(item) + "\n" + e)
-            raise Exception("Failed to scrape search result. Item added to errorlog.html")
-            continue
-
-
-    #find the best deal
-    bestDeal = data[0]
-    for item in data:
-        if item["price"] < bestDeal["price"]:
-            bestDeal = item
-
-    return bestDeal
 
 
 
@@ -96,7 +28,6 @@ class App:
     def getConfig(self):
         with open(".\config.json", "r") as f:
             return json.load(f)
-
     def saveConfig(self):
         with open(".\config.json", "w") as f:
             configJson = json.dumps(self.config, indent = 4, sort_keys = True )
@@ -116,7 +47,72 @@ class App:
 
         self.outputFrame = tk.Frame(master = self.root, width = 400, height = 400, bg = "lightgrey" )
         self.outputFrame.pack(fill = tk.BOTH, side = tk.LEFT, expand = True)
+    def findBestDeal(self, itemId):
+        #find Tamriel Trade Center URL of the item
+        itemUrl = "https://{0}.tamrieltradecentre.com/pc/Trade/SearchResult?ItemID={1}&SortBy=LastSeen&Order=desc".format(searchRegion, itemId)
+        logContents = ""
+        #try to request the page
+        try:
+            htmlContent = requests.get(itemUrl)
+            print(htmlContent.status_code)
+            if htmlContent.status_code == 202:
+                raise Exception("Connection to site succesfull but it seems like site is requesting captcha information. Visit {} and enter captcha.".format(itemUrl))
+                return
+        except Exception as e:
+            print("Page loading failed. Exception: " + e)
+            input()
 
+        #parse the response into beautiful soup
+        soup = BeautifulSoup(htmlContent.text, "html.parser")
+        try:
+            table = soup.find("table", { "class": "trade-list-table" })
+            items = table.find_all("tr", { "class": "cursor-pointer" })
+        except:
+            with open("errorlog.html" , "w", encoding = "utf-8") as f:
+                f.write("Tried Url: "+ itemUrl + "\n" + "ItemID: " + itemId + "\n" + htmlContent.text)
+
+            raise Exception("Couldn't scrape the search result. Item ID might be wrong or page is down. Check errorlog.html to see the html tried.")
+            return
+
+        #get listings into data list
+        data = []
+        
+        for item in items:
+            try:
+                itemName = item.find_all("div")[0].text.strip()
+                itemPrice = item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[0]
+                itemPrice = float(itemPrice.replace(",", ""))
+                itemAmount = int(item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[6].strip())
+                postTime = item.find("td", { "class": "bold hidden-xs" }).get("data-mins-elapsed") + " min ago"
+                itemLocation = item.find_all("td", { "class": "hidden-xs" })[1].text.strip().splitlines()[0].replace(":", " ->")
+                itemSeller = item.find("div", { "class": "text-small-width" }).text.strip()
+
+
+                data.append({ 
+                    "name": itemName, 
+                    "price": itemPrice , 
+                    "amount": itemAmount, 
+                    "totalPrice": itemPrice*itemAmount, 
+                    "timeElapsed": postTime, 
+                    "location": itemLocation,
+                    "seller": itemSeller
+                })
+            except Exception as e:
+                with open("errorlog.html", "r") as f:
+                    logContents = f.read()
+                with open("errorlog.html" , "w") as f:
+                    f.write(logContents + "\n" + str(item) + "\n" + e)
+                raise Exception("Failed to scrape search result. Item added to errorlog.html")
+                continue
+
+
+        #find the best deal
+        bestDeal = data[0]
+        for item in data:
+            if item["price"] < bestDeal["price"]:
+                bestDeal = item
+
+        return bestDeal
     def constructOutputTable(self):
         self.tableFrame = tk.Frame(master = self.outputFrame, width = 350, height = 350,  bg = "white")
         self.tableFrame.pack(fill = tk.Y, side = tk.LEFT, padx = 20, pady = 20)
@@ -367,7 +363,7 @@ class App:
             for i in range(len(itemConfig)):
                 itemId = itemConfig[i]["id"]
                 
-                constructColumn(findBestDeal(itemId), i)
+                constructColumn(self.findBestDeal(itemId), i)
 
         with open(".\\config.json" , "r") as f:
             config = json.loads(f.read())
