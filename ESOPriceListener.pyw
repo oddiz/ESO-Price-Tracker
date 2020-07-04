@@ -5,117 +5,44 @@ import json
 import threading
 import time
 
-
-searchRegion = "eu"
-
-
-
-
-
-
-
 class App:
 
     def __init__(self):
+        self.searchRegion = "eu"
         self.config = self.getConfig()
         self.run = False
+
+        #clear the log
+        with open("errorlog.html", "w") as f:
+            f.write("")
+
         self.initWindow()
         self.initLayout()
         self.initNavbar()
         self.constructOutputTable()
         self.constructOptions()
         self.root.mainloop()
+    
     def getConfig(self):
         with open(".\config.json", "r") as f:
             return json.load(f)
+
     def saveConfig(self):
         with open(".\config.json", "w") as f:
             configJson = json.dumps(self.config, indent = 4, sort_keys = True )
             f.write(configJson)
-    def saveRefreshRate(self):
-        try:
-            self.config["options"]["refreshRate"] = int(self.refRateInput.get())
-            self.refreshCounter["text"] = "Refresh: " + str(self.refRateInput.get())
-        except:
-            raise TypeError("Refresh rate must be an integer.")
+
     def initWindow(self):
         self.root = tk.Tk()
         self.root.title("ESO Market Tracker")
+
     def initLayout(self):
-        self.navBarFrame = tk.Frame(master = self.root, width = 80, height = 400, bg = "grey" )
-        self.navBarFrame.pack(fill = tk.Y, side = tk.LEFT)
+            self.navBarFrame = tk.Frame(master = self.root, width = 80, height = 400, bg = "grey" )
+            self.navBarFrame.pack(fill = tk.Y, side = tk.LEFT)
 
-        self.outputFrame = tk.Frame(master = self.root, width = 400, height = 400, bg = "lightgrey" )
-        self.outputFrame.pack(fill = tk.BOTH, side = tk.LEFT, expand = True)
-    def findBestDeal(self, itemId):
-        #find Tamriel Trade Center URL of the item
-        itemUrl = "https://{0}.tamrieltradecentre.com/pc/Trade/SearchResult?ItemID={1}&SortBy=LastSeen&Order=desc".format(searchRegion, itemId)
-        logContents = ""
-        #try to request the page
-        try:
-            htmlContent = requests.get(itemUrl)
-            print(htmlContent.status_code)
-            if htmlContent.status_code == 202:
-                raise Exception("Connection to site succesfull but it seems like site is requesting captcha information. Visit {} and enter captcha.".format(itemUrl))
-                return
-        except Exception as e:
-            print("Page loading failed. Exception: " + e)
-            input()
+            self.outputFrame = tk.Frame(master = self.root, width = 400, height = 400, bg = "lightgrey" )
+            self.outputFrame.pack(fill = tk.BOTH, side = tk.LEFT, expand = True)
 
-        #parse the response into beautiful soup
-        soup = BeautifulSoup(htmlContent.text, "html.parser")
-        try:
-            table = soup.find("table", { "class": "trade-list-table" })
-            items = table.find_all("tr", { "class": "cursor-pointer" })
-        except:
-            with open("errorlog.html" , "w", encoding = "utf-8") as f:
-                f.write("Tried Url: "+ itemUrl + "\n" + "ItemID: " + itemId + "\n" + htmlContent.text)
-
-            raise Exception("Couldn't scrape the search result. Item ID might be wrong or page is down. Check errorlog.html to see the html tried.")
-            return
-
-        #get listings into data list
-        data = []
-        
-        for item in items:
-            try:
-                itemName = item.find_all("div")[0].text.strip()
-                itemPrice = item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[0]
-                itemPrice = float(itemPrice.replace(",", ""))
-                itemAmount = int(item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[6].strip())
-                postTime = item.find("td", { "class": "bold hidden-xs" }).get("data-mins-elapsed") + " min ago"
-                itemLocation = item.find_all("td", { "class": "hidden-xs" })[1].text.strip().splitlines()[0].replace(":", " ->")
-                itemSeller = item.find("div", { "class": "text-small-width" }).text.strip()
-
-
-                data.append({ 
-                    "name": itemName, 
-                    "price": itemPrice , 
-                    "amount": itemAmount, 
-                    "totalPrice": itemPrice*itemAmount, 
-                    "timeElapsed": postTime, 
-                    "location": itemLocation,
-                    "seller": itemSeller
-                })
-            except Exception as e:
-                with open("errorlog.html", "r") as f:
-                    logContents = f.read()
-                with open("errorlog.html" , "w") as f:
-                    f.write(logContents + "\n" + str(item) + "\n" + e)
-                raise Exception("Failed to scrape search result. Item added to errorlog.html")
-                continue
-
-
-        #find the best deal
-        bestDeal = data[0]
-        for item in data:
-            if item["price"] < bestDeal["price"]:
-                bestDeal = item
-
-        return bestDeal
-    def constructOutputTable(self):
-        self.tableFrame = tk.Frame(master = self.outputFrame, width = 350, height = 350,  bg = "white")
-        self.tableFrame.pack(fill = tk.Y, side = tk.LEFT, padx = 20, pady = 20)
     def initNavbar(self):
 
         self.trackerButton = tk.Button( master = self.navBarFrame, command = lambda: self.EventHandler.handleTrackerButton(self), text = "Tracker", state = "active", width = 7, height = 2)
@@ -132,6 +59,11 @@ class App:
 
         self.refreshCounter = tk.Label( master = self.navBarFrame, text = "Refresh: " + str(self.config["options"]["refreshRate"]))
         self.refreshCounter.pack( side = tk.BOTTOM )
+    
+    def constructOutputTable(self):
+        self.tableFrame = tk.Frame(master = self.outputFrame, width = 350, height = 350,  bg = "white")
+        self.tableFrame.pack(fill = tk.Y, side = tk.LEFT, padx = 20, pady = 20)
+
     def constructOptions(self):
         self.optionsFrame = tk.Frame(master = self.outputFrame, width = 350, height = 350, bg = "white")
         
@@ -155,7 +87,7 @@ class App:
         self.editItemsFrame = tk.Frame(master = self.optionsFrame, width = 150 )
 
         #self.itemBox = tk.Listbox( master = self.editItemsFrame, bg = "white" )
-#
+
         #for index, item in enumerate(self.config["items"]):
         #    itemBox.insert( index , item["name"])
         
@@ -171,12 +103,169 @@ class App:
         
         self.editItemsFrame.pack(fill = tk.X, side = tk.TOP, pady = 4 )
 
+    def constructOutput(self):
+
+
+        def constructColumn(item, row):
+
+
+            for i in range(4):
+
+                if i == 0:
+
+                    boxContent = item["name"]
+
+
+                if i == 1:
+
+                    boxContent = "{0}g x {1} = {2}g".format(item["price"], item["amount"], item["totalPrice"])
+
+                    if item["price"] <= config["items"][row]["price_threshold"]:
+                        gridBox = tk.Frame(
+                            master = self.tableFrame,
+                            borderwidth = 1
+                        )
+                        gridBox.grid(row = row, column = i)
+                        label = tk.Label(master = gridBox, text = boxContent, fg = "white", bg = "red", padx = 5, pady = 5)
+                        label.pack()
+                        continue
+
+
+                if i == 2:
+
+                    boxContent = item["location"] + "  @" + item["seller"]
+
+
+                if i == 3:
+
+                    boxContent = item["timeElapsed"]
+
+
+                gridBox = tk.Frame(
+                    master = self.tableFrame,
+                    borderwidth = 1
+                )
+                
+                gridBox.grid(row = row, column = i)
+                label = tk.Label(master = gridBox, text = boxContent, padx = 5, pady = 5)
+                label.pack()
+
+
+
+        def constructRow(config):
+
+            itemConfig = config["items"]
+
+            for i in range(len(itemConfig)):
+                itemId = itemConfig[i]["id"]
+                try:
+                    constructColumn(self.findBestDeal(itemId), i)
+                except:
+                    continue
+
+
+
+        with open(".\config.json" , "r") as f:
+            config = json.loads(f.read())
+        constructRow(config)
+    
+    def saveRefreshRate(self):
+        try:
+            self.config["options"]["refreshRate"] = int(self.refRateInput.get())
+            self.refreshCounter["text"] = "Refresh: " + str(self.refRateInput.get())
+        except:
+            raise TypeError("Refresh rate must be an integer.")
+    
+    def findBestDeal(self, itemId):
+        #find Tamriel Trade Center URL of the item
+        itemUrl = "https://{0}.tamrieltradecentre.com/pc/Trade/SearchResult?ItemID={1}&SortBy=LastSeen&Order=desc".format(self.searchRegion, itemId)
+        logContents = ""
+        #try to request the page
+        try:
+            htmlContent = requests.get(itemUrl)
+            print(htmlContent.status_code)
+            if htmlContent.status_code == 202:
+
+                with open("errorlog.html", "a+", encoding = "utf-8") as f:
+                    f.write("Connection to site succesfull but it seems like site is requesting captcha. Visit {} and enter captcha.".format(itemUrl))
+                raise Exception("Connection to site succesfull but it seems like site is requesting captcha. Visit {} and enter captcha.".format(itemUrl))
+                return
+        except Exception as e:
+            print("Page loading failed. Exception: " + str(e))
+            input()
+
+        
+        #parse the response into beautiful soup
+        soup = BeautifulSoup(htmlContent.text, "html.parser")
+        try:
+            table = soup.find("table", { "class": "trade-list-table" })
+            items = table.find_all("tr", { "class": "cursor-pointer" })
+        except:
+            with open("errorlog.html" , "a+", encoding = "utf-8") as f:
+                f.write("Tried Url: "+ itemUrl + "\n" + "ItemID: " + str(itemId) + "\n")
+
+            print("Couldn't scrape the search result for item with id:0 {}. Check errorlog.html to see the html tried.".format(str(itemId)))
+            return
+        
+        #get listings into data list
+        data = []
+        
+        for item in items:
+            try:
+                itemName = item.find_all("div")[0].text.strip()
+                itemPrice = item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[0]
+                itemPrice = float(itemPrice.replace(",", ""))
+                itemAmount = int(item.find("td", { "class": "gold-amount" }).text.strip().splitlines()[6].strip())
+                postTime = item.find("td", { "class": "bold hidden-xs" }).get("data-mins-elapsed") + " min ago"
+                itemLocation = item.find_all("td", { "class": "hidden-xs" })[1].text.strip().splitlines()[0].replace(":", " ->")
+                itemSeller = item.find_all("td", { "class": "hidden-xs" })[1].text.strip().splitlines()[3].strip()
+            
+                
+                data.append({ 
+                    "name": itemName, 
+                    "price": itemPrice , 
+                    "amount": itemAmount, 
+                    "totalPrice": itemPrice*itemAmount, 
+                    "timeElapsed": postTime, 
+                    "location": itemLocation,
+                    "seller": itemSeller
+                })
+            except Exception as e:
+                with open("errorlog.html" , "a+") as f:
+                    f.writelines( item.prettify() + "\n" + str(e) )
+                print("Failed to scrape an item. Page log added to errorlog.html")
+                continue
+
+
+        #find the best deal
+        bestDeal = data[0]
+        for item in data:
+            if item["price"] < bestDeal["price"]:
+                bestDeal = item
+
+        return bestDeal
+    
+    def listenerLoop(self):
+        if self.run == True:
+            while True:
+
+                self.constructOutput()
+                timeRemaining = self.config["options"]["refreshRate"]
+                for i in range(timeRemaining):
+                    timeRemaining -= 1
+                    self.refreshCounter["text"] = "Refresh: " + str(timeRemaining)
+                    time.sleep(1)
+                    if self.run == False:
+                        return
+    
     class itemBox:
+
         def __init__(self, parentSelf):
             self.itemBox = tk.Listbox( master = parentSelf.editItemsFrame, bg = "white" )
             self.parent = parentSelf
             self.constructList()
             self.itemBox.grid(column = 1, row = 0, rowspan = 3)
+
         def constructList(self):
             items = self.parent.config["items"]
             for index, item in enumerate(items):
@@ -185,9 +274,9 @@ class App:
         def refreshList(self):
             self.itemBox.delete(0, "end")
             self.constructList()
+
         def constructWindow(self, itemName="", itemId="", threshold=""):
 
-            
             self.itemWindow = tk.Toplevel()
             
             itemNameText = tk.Label( master = self.itemWindow, text = "Item Name: ", font = "Helvetica 16 bold")
@@ -263,7 +352,6 @@ class App:
 
             itemWindowSaveButton = tk.Button( master = self.itemWindow, text = "Save", font = "Helvetica 16 bold", command = saveWindow )
             itemWindowSaveButton.grid (column = 0, row = 3, columnspan = 2)
-            
 
 
         def addItem(self):
@@ -283,25 +371,12 @@ class App:
             self.parent.saveConfig()
             self.refreshList()
 
-    def mainLoop(self):
-        if self.run == True:
-            while True:
-
-                self.constructOutput()
-                timeRemaining = self.config["options"]["refreshRate"]
-                for i in range(timeRemaining):
-                    timeRemaining -= 1
-                    self.refreshCounter["text"] = "Refresh: " + str(timeRemaining)
-                    time.sleep(1)
-                    if self.run == False:
-                        return
-
     class EventHandler:
         def handleStartButton(self):
             self.run = True
             self.startButton.config( state = "disabled" )
             self.stopButton.config( state = "normal" )
-            self.loopThread = threading.Thread(target = self.mainLoop)
+            self.loopThread = threading.Thread(target = self.listenerLoop)
             self.loopThread.start()
 
         def handleStopButton(self):
@@ -327,46 +402,6 @@ class App:
             self.itemBox.editItem()
         def handleEditItemsDelete(self):
             self.itemBox.deleteItem()
-    def constructOutput(self):
-        def constructColumn(item, row):
-            for i in range(4):
-                if i == 0:
-                    boxContent = item["name"]
-                if i == 1:
-                    boxContent = "{0}g x {1} = {2}g".format(item["price"], item["amount"], item["totalPrice"])
-
-                    if item["price"] <= config["items"][row]["price_threshold"]:
-                        gridBox = tk.Frame(
-                            master = self.tableFrame,
-                            borderwidth = 1
-                        )
-                        gridBox.grid(row = row, column = i)
-                        label = tk.Label(master = gridBox, text = boxContent, fg = "white", bg = "red", padx = 5, pady = 5)
-                        label.pack()
-                        continue
-                if i == 2:
-                    boxContent = item["location"]
-                if i == 3:
-                    boxContent = item["timeElapsed"]
-
-                gridBox = tk.Frame(
-                    master = self.tableFrame,
-                    borderwidth = 1
-                )
-                
-                gridBox.grid(row = row, column = i)
-                label = tk.Label(master = gridBox, text = boxContent, padx = 5, pady = 5)
-                label.pack()
-
-        def constructRow(config):
-            itemConfig = config["items"]
-            for i in range(len(itemConfig)):
-                itemId = itemConfig[i]["id"]
-                
-                constructColumn(self.findBestDeal(itemId), i)
-
-        with open(".\\config.json" , "r") as f:
-            config = json.loads(f.read())
-        constructRow(config)
-
-app = App()
+    
+if __name__ == "__main__":
+    app = App()
