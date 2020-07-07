@@ -11,7 +11,6 @@ class App:
         self.searchRegion = "eu"
         self.config = self.getConfig()
         self.run = False
-
         #clear the log
         with open("errorlog.html", "w") as f:
             f.write("")
@@ -21,6 +20,8 @@ class App:
         self.initNavbar()
         self.constructOutputTable()
         self.constructOptions()
+
+        
         self.root.mainloop()
     
     def getConfig(self):
@@ -40,8 +41,24 @@ class App:
             self.navBarFrame = tk.Frame(master = self.root, width = 80, height = 400, bg = "grey" )
             self.navBarFrame.pack(fill = tk.Y, side = tk.LEFT)
 
-            self.outputFrame = tk.Frame(master = self.root, width = 400, height = 400, bg = "lightgrey" )
-            self.outputFrame.pack(fill = tk.BOTH, side = tk.LEFT, expand = True)
+
+            self.outputFrame = tk.Frame(master = self.root, width = 1100, height = 400, bg = "lightgrey" )
+            self.outputFrame.pack(fill = tk.BOTH, side = tk.BOTTOM, expand = True )
+
+            outputText = tk.Label ( master = self.outputFrame, font = "Helvetica 24", text = "Output:", justify = tk.CENTER , bg = "lightgrey")
+            outputText.pack( side = tk.TOP )
+
+            self.logFrame = tk.Frame( master = self.outputFrame, width = 350, height = 360, bg = "#23384f")
+            self.logFrame.pack(fill = tk.X, side = tk.BOTTOM)
+
+            logTitle = tk.Label ( master = self.logFrame, font = "Helvetica 24", text = "Log:", justify = tk.CENTER , bg = "#23384f", anchor = "w", fg = "white")
+            logTitle.pack( side = tk.TOP )
+
+            
+            self.logTextBox = tk.Text( master = self.logFrame, width = 82, height = 10, bg = "#23384f", fg = "white", font = ("Source Code Pro", 12, "bold"))
+            self.logTextBox.pack( side = tk.LEFT )
+
+            self.logger = self.LogHandler(self)
 
     def initNavbar(self):
 
@@ -61,8 +78,8 @@ class App:
         self.refreshCounter.pack( side = tk.BOTTOM )
     
     def constructOutputTable(self):
-        self.tableFrame = tk.Frame(master = self.outputFrame, width = 350, height = 350,  bg = "white")
-        self.tableFrame.pack(fill = tk.Y, side = tk.LEFT, padx = 20, pady = 20)
+        self.tableFrame = tk.Frame(master = self.outputFrame, width = 650, height = 350,  bg = "white")
+        self.tableFrame.pack(fill = tk.BOTH, side = tk.LEFT, padx = 20, pady = 20)
 
     def constructOptions(self):
         self.optionsFrame = tk.Frame(master = self.outputFrame, width = 350, height = 350, bg = "white")
@@ -183,14 +200,20 @@ class App:
         #try to request the page
         try:
             htmlContent = requests.get(itemUrl)
-            print(htmlContent.status_code)
-            if htmlContent.status_code == 202:
+            self.logger.addLog("Request succesfull for ID {}".format(itemId), "success")
 
+            if htmlContent.status_code == 202:
+            
+                self.logger.addLog("Connection to site succesfull but it seems like site is requesting captcha. Visit {} and enter captcha.".format(itemUrl), "error")
+            
                 with open("errorlog.html", "a+", encoding = "utf-8") as f:
                     f.write("Connection to site succesfull but it seems like site is requesting captcha. Visit {} and enter captcha.".format(itemUrl))
+            
                 raise Exception("Connection to site succesfull but it seems like site is requesting captcha. Visit {} and enter captcha.".format(itemUrl))
+            
                 return
         except Exception as e:
+            self.logger.addLog("HTML request failed for ID {}".format(itemId))
             print("Page loading failed. Exception: " + str(e))
             input()
 
@@ -201,10 +224,11 @@ class App:
             table = soup.find("table", { "class": "trade-list-table" })
             items = table.find_all("tr", { "class": "cursor-pointer" })
         except:
+
+            self.logger.addLog("Couldn't scrape the page for item with id: {}. Check errorlog.html to see the html tried.".format(str(itemId)), "error")
             with open("errorlog.html" , "a+", encoding = "utf-8") as f:
                 f.write("Tried Url: "+ itemUrl + "\n" + "ItemID: " + str(itemId) + "\n")
 
-            print("Couldn't scrape the search result for item with id:0 {}. Check errorlog.html to see the html tried.".format(str(itemId)))
             return
         
         #get listings into data list
@@ -230,10 +254,7 @@ class App:
                     "location": itemLocation,
                     "seller": itemSeller
                 })
-            except Exception as e:
-                with open("errorlog.html" , "a+") as f:
-                    f.writelines( item.prettify() + "\n" + str(e) )
-                print("Failed to scrape an item. Page log added to errorlog.html")
+            except:
                 continue
 
 
@@ -310,6 +331,8 @@ class App:
                     return
                 try:
                     nameInput = str(itemNameInput.get())
+                    if nameInput == "":
+                        nameInput = str(IdInput)
                 except:
                     raise Exception("Invalid Name")
                     return
@@ -349,9 +372,11 @@ class App:
                     f.write(configJson)
                 
                 self.refreshList()
+                self.itemWindow.destroy()
 
             itemWindowSaveButton = tk.Button( master = self.itemWindow, text = "Save", font = "Helvetica 16 bold", command = saveWindow )
             itemWindowSaveButton.grid (column = 0, row = 3, columnspan = 2)
+            
 
 
         def addItem(self):
@@ -403,5 +428,38 @@ class App:
         def handleEditItemsDelete(self):
             self.itemBox.deleteItem()
     
+    class LogHandler:
+
+        def __init__(self, parentSelf):
+            self.parent = parentSelf
+            self.logWidget = parentSelf.logTextBox
+
+            self.logWidget.tag_configure("error", foreground = "red")
+            self.logWidget.tag_configure("success", foreground = "green")
+            self.logWidget.configure(state = "disabled")
+
+            self.scrollbar = tk.Scrollbar(parentSelf.logFrame)
+            self.scrollbar.config(command = self.logWidget.yview)
+            self.logWidget.config (yscrollcommand = self.scrollbar.set)
+                
+            self.scrollbar.pack(side = tk.LEFT, fill = tk.Y)
+            
+        def addLog(self, text="", option=""):
+
+            self.logWidget.configure(state = "normal")
+            if option=="error":
+                self.logWidget.insert(1.0, text+"\n" , "error")
+            elif option == "success":
+                self.logWidget.insert(1.0, text+"\n", "success")
+            else:
+                self.logWidget.insert(1.0, text+"\n")
+
+            self.logWidget.delete(20.0, "end")
+            self.logWidget.configure(state = "disabled")
+
+
+
+
+
 if __name__ == "__main__":
     app = App()
