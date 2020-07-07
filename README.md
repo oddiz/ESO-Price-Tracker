@@ -7,10 +7,10 @@ This python app can track prices for specified items from Tamriel Trade Center.
 If you don't have python, [install python](https://www.python.org/downloads/)
 
 Put
-'''
+```
 ESOPriceTracker.pyw
 config.json
-'''
+```
 in the same folder.
 
 Run ESOPriceTracker.pyw
