@@ -25,11 +25,11 @@ class App:
         self.root.mainloop()
     
     def getConfig(self):
-        with open(".\config.json", "r") as f:
+        with open("config.json", "r") as f:
             return json.load(f)
 
     def saveConfig(self):
-        with open(".\config.json", "w") as f:
+        with open("config.json", "w") as f:
             configJson = json.dumps(self.config, indent = 4, sort_keys = True )
             f.write(configJson)
 
@@ -182,7 +182,7 @@ class App:
 
 
 
-        with open(".\config.json" , "r") as f:
+        with open("config.json" , "r") as f:
             config = json.loads(f.read())
         constructRow(config)
     
@@ -367,7 +367,7 @@ class App:
                     }
                     configFile["items"].append(newItem)
 
-                with open(".\config.json", "w") as f:
+                with open("config.json", "w") as f:
                     configJson = json.dumps(configFile, indent = 4, sort_keys = True )
                     f.write(configJson)
                 
