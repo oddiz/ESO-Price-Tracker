@@ -29,11 +29,6 @@
             "name": "Zircon Plating",
             "price_threshold": 15000,
             "type": "crafting"
-        },
-        {
-            "id": 9812399123,
-            "name": "9812399123",
-            "price_threshold": 0
         }
     ],
     "options": {
